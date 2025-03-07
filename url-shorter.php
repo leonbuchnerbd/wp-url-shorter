@@ -1,11 +1,11 @@
 <?php
 /**
  * Plugin Name: URL-Shorter
- * Plugin URI: http://example.com/
+ * Plugin URI: https://www.buchner-leon.de/
  * Description: Ein Plugin zur Verkürzung von URLs mit Klicktracking und QR-Code Generierung.
  * Version: 1.0
  * Author: Leon Buchner
- * Author URI: http://example.com/
+ * Author URI: https://www.buchner-leon.de/
  * Text Domain: url-shorter
  * Domain Path: /languages
  */
