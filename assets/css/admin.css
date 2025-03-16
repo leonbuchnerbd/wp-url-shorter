@@ -1,52 +1,62 @@
-/* assets/css/admin.css */
-
-/* Container für horizontales Scrollen */
-.responsive-table-container {
-    overflow-x: auto;
+/* Card Container: Grid-Layout für die Cards */
+.card-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
 }
 
-/* Grundstil für die Tabelle */
-.wp-list-table td,
-.wp-list-table th {
-    padding: 10px;
-}
-
-/* Responsive Anpassungen bei kleineren Bildschirmen */
-@media screen and (max-width: 768px) {
-    .wp-list-table td,
-    .wp-list-table th {
-        padding: 8px;
-        font-size: 14px;
-    }
-    .wrap h1 {
-        font-size: 24px;
-    }
-    .wrap .button {
-        display: block;
-        width: 100%;
-        box-sizing: border-box;
-        margin-bottom: 10px;
-        text-align: center;
-    }
-}
-
-/* Standard: Buttons nebeneinander mit gleichmäßiger Verteilung */
-.action-buttons {
+/* Card Style */
+.card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 15px;
     display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Card Header (z. B. Short Code als Titel) */
+.card-header {
+    font-size: 18px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+/* Card Body: Enthält Name, Original URL und Klicks */
+.card-body p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+/* Card Actions: Flex-Container für Buttons */
+.card-actions {
+    display: flex;
+    flex-wrap: wrap;
     gap: 10px;
+    margin-top: 15px;
 }
 
-.action-buttons a.button {
-    flex: 1;
+.card-actions a.button {
+    flex: 1 1 auto;
     text-align: center;
+    padding: 8px 10px;
 }
 
-/* Responsive Anpassung: Bei kleinen Bildschirmen untereinander anordnen */
+/* Responsive Anpassungen für kleinere Bildschirme */
 @media screen and (max-width: 768px) {
-    .action-buttons {
-        flex-direction: column;
+    .card {
+        padding: 10px;
     }
-    .action-buttons a.button {
-        width: 100%;
+    .card-header {
+        font-size: 16px;
+    }
+    .card-body p {
+        font-size: 13px;
+    }
+    .card-actions {
+        flex-direction: column;
     }
 }

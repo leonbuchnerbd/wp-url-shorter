@@ -11,6 +11,10 @@ def zip_folder(folder_path, output_zip):
                 # .zip-Dateien ignorieren
                 if file.endswith('.zip'):
                     continue
+                if file.endswith('.gitignore'):
+                    continue
+                if file.endswith('.md'):
+                    continue
                 if file.endswith('zipper.py'):
                     continue
                 file_path = os.path.join(root, file)
@@ -20,6 +24,6 @@ def zip_folder(folder_path, output_zip):
 
 if __name__ == "__main__":
     current_folder = os.path.abspath(".")
-    output_zip = os.path.join(current_folder, "url-shortner.zip")
+    output_zip = os.path.join(current_folder, "url-shorter.zip")
     zip_folder(current_folder, output_zip)
     print("Ordner wurde erfolgreich in", output_zip, "gezippt.")

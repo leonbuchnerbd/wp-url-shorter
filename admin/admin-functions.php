@@ -16,72 +16,56 @@ function urlshorter_admin_menu() {
     );
 }
 
-// Anzeige der Admin-Seite
+// Anzeige der Admin-Seitefunction urlshorter_admin_page() {
 function urlshorter_admin_page() {
     if ( isset($_GET['action']) && $_GET['action'] === 'edit' && isset($_GET['id']) ) {
         urlshorter_edit_url();
         return;
     }
-    
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'short_urls';
-    $urls = $wpdb->get_results( "SELECT * FROM $table_name" );
-    ?>
-    <div class="wrap">
-        <h1>URL-Shorter Verwaltung</h1>
-        <div class="responsive-table-container">
-            <table class="wp-list-table widefat fixed striped">
-                <thead>
+        
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'short_urls';
+        $urls = $wpdb->get_results( "SELECT * FROM $table_name" );
+        ?>
+        <div class="wrap">
+            <h1>URL-Shorter Verwaltung</h1>
+            <div class="card-container">
+                <?php foreach ( $urls as $url ) : ?>
+                    <div class="card">
+                        <div class="card-header">
+                            <strong><?php echo esc_html( $url->short_code ); ?></strong>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Name:</strong> <?php echo esc_html( $url->name ); ?></p>
+                            <p><strong>Original URL:</strong> <?php echo esc_html( $url->long_url ); ?></p>
+                            <p><strong>Klicks:</strong> <?php echo esc_html( $url->click_count ); ?></p>
+                        </div>
+                        <div class="card-actions">
+                            <a href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=url-shorter&action=download_qrcode&id=' . $url->id ), 'urlshorter_download_' . $url->id ); ?>" class="button">QR-Code herunterladen</a>
+                            <a href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=url-shorter&action=edit&id=' . $url->id ), 'urlshorter_edit_' . $url->id ); ?>" class="button">Bearbeiten</a>
+                            <a href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=url-shorter&action=reset_clicks&id=' . $url->id ), 'urlshorter_reset_' . $url->id ); ?>" class="button">Klicks zurücksetzen</a>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <hr>
+            <h2>Neue URL verkürzen</h2>
+            <form method="post" action="">
+                <?php wp_nonce_field( 'create_url_nonce' ); ?>
+                <table class="form-table">
                     <tr>
-                        <th>Short Code</th>
-                        <th>Name</th>
-                        <th>Original URL</th>
-                        <th>Klicks</th>
-                        <th>QR-Code</th>
-                        <th>Aktionen</th>
+                        <th scope="row"><label for="name">Name / Beschriftung</label></th>
+                        <td><input name="name" type="text" id="name" value="" class="regular-text"></td>
                     </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ( $urls as $url ) : ?>
                     <tr>
-                        <td><?php echo esc_html( $url->short_code ); ?></td>
-                        <td><?php echo esc_html( $url->name ); ?></td>
-                        <td><?php echo esc_html( $url->long_url ); ?></td>
-                        <td><?php echo esc_html( $url->click_count ); ?></td>
-                        <td>
-                            <div class="action-buttons">
-                                <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=download_qrcode&id=' . $url->id ); ?>" class="button">QR-Code herunterladen</a>
-                            </div>
-                        </td>
-                        <td>
-                            <div class="action-buttons">
-                                <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=edit&id=' . $url->id ); ?>" class="button">Bearbeiten</a>
-                                <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=reset_clicks&id=' . $url->id ); ?>" class="button">Klicks zurücksetzen</a>
-                            </div>
-                        </td>
+                        <th scope="row"><label for="long_url">Lange URL</label></th>
+                        <td><input name="long_url" type="url" id="long_url" value="" class="regular-text" required></td>
                     </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                </table>
+                <?php submit_button( 'URL verkürzen' ); ?>
+            </form>
         </div>
-        <hr>
-        <h2>Neue URL verkürzen</h2>
-        <form method="post" action="">
-            <?php wp_nonce_field( 'create_url_nonce' ); ?>
-            <table class="form-table">
-                <tr>
-                    <th scope="row"><label for="name">Name / Beschriftung</label></th>
-                    <td><input name="name" type="text" id="name" value="" class="regular-text"></td>
-                </tr>
-                <tr>
-                    <th scope="row"><label for="long_url">Lange URL</label></th>
-                    <td><input name="long_url" type="url" id="long_url" value="" class="regular-text" required></td>
-                </tr>
-            </table>
-            <?php submit_button( 'URL verkürzen' ); ?>
-        </form>
-    </div>
-    <?php
+        <?php
 }
 
 
@@ -130,6 +114,7 @@ function urlshorter_download_qrcode() {
 function urlshorter_edit_url() {
     global $wpdb;
     $id = intval($_GET['id']);
+    check_admin_referer( 'urlshorter_edit_' . $id );
     $table_name = $wpdb->prefix . 'short_urls';
     $entry = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM $table_name WHERE id = %d", $id ) );
 
@@ -166,7 +151,7 @@ function urlshorter_edit_url() {
         }
     }
     ?>
-    <div class="wrap">
+     <div class="wrap">
         <h1>URL bearbeiten</h1>
         <form method="post" action="">
             <?php wp_nonce_field( 'update_url_nonce' ); ?>
