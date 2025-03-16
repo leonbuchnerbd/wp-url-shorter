@@ -1,0 +1,52 @@
+/* assets/css/admin.css */
+
+/* Container für horizontales Scrollen */
+.responsive-table-container {
+    overflow-x: auto;
+}
+
+/* Grundstil für die Tabelle */
+.wp-list-table td,
+.wp-list-table th {
+    padding: 10px;
+}
+
+/* Responsive Anpassungen bei kleineren Bildschirmen */
+@media screen and (max-width: 768px) {
+    .wp-list-table td,
+    .wp-list-table th {
+        padding: 8px;
+        font-size: 14px;
+    }
+    .wrap h1 {
+        font-size: 24px;
+    }
+    .wrap .button {
+        display: block;
+        width: 100%;
+        box-sizing: border-box;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+}
+
+/* Standard: Buttons nebeneinander mit gleichmäßiger Verteilung */
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.action-buttons a.button {
+    flex: 1;
+    text-align: center;
+}
+
+/* Responsive Anpassung: Bei kleinen Bildschirmen untereinander anordnen */
+@media screen and (max-width: 768px) {
+    .action-buttons {
+        flex-direction: column;
+    }
+    .action-buttons a.button {
+        width: 100%;
+    }
+}

@@ -29,35 +29,41 @@ function urlshorter_admin_page() {
     ?>
     <div class="wrap">
         <h1>URL-Shorter Verwaltung</h1>
-        <table class="wp-list-table widefat fixed striped">
-            <thead>
-                <tr>
-                    <th>Short Code</th>
-                    <th>Name</th>
-                    <th>Original URL</th>
-                    <th>Klicks</th>
-                    <th>QR-Code</th>
-                    <th>Aktionen</th>
-                </tr>
-            </thead>
-            <tbody>
-                <?php foreach ( $urls as $url ) : ?>
-                <tr>
-                    <td><?php echo esc_html( $url->short_code ); ?></td>
-                    <td><?php echo esc_html( $url->name ); ?></td>
-                    <td><?php echo esc_html( $url->long_url ); ?></td>
-                    <td><?php echo esc_html( $url->click_count ); ?></td>
-                    <td>
-                        <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=download_qrcode&id=' . $url->id ); ?>" class="button">QR-Code herunterladen</a>
-                    </td>
-                    <td>
-                        <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=edit&id=' . $url->id ); ?>" class="button">Bearbeiten</a>
-                        <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=reset_clicks&id=' . $url->id ); ?>" class="button">Klicks zurücksetzen</a>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+        <div class="responsive-table-container">
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th>Short Code</th>
+                        <th>Name</th>
+                        <th>Original URL</th>
+                        <th>Klicks</th>
+                        <th>QR-Code</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $urls as $url ) : ?>
+                    <tr>
+                        <td><?php echo esc_html( $url->short_code ); ?></td>
+                        <td><?php echo esc_html( $url->name ); ?></td>
+                        <td><?php echo esc_html( $url->long_url ); ?></td>
+                        <td><?php echo esc_html( $url->click_count ); ?></td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=download_qrcode&id=' . $url->id ); ?>" class="button">QR-Code herunterladen</a>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=edit&id=' . $url->id ); ?>" class="button">Bearbeiten</a>
+                                <a href="<?php echo admin_url( 'admin.php?page=url-shorter&action=reset_clicks&id=' . $url->id ); ?>" class="button">Klicks zurücksetzen</a>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
         <hr>
         <h2>Neue URL verkürzen</h2>
         <form method="post" action="">
@@ -77,6 +83,7 @@ function urlshorter_admin_page() {
     </div>
     <?php
 }
+
 
 
 // Formularverarbeitung: Neue URL anlegen oder bestehende bearbeiten
@@ -186,4 +193,27 @@ function urlshorter_edit_url() {
 }
 
 
+function urlshorter_reset_clicks() {
+    global $wpdb;
+    $id = intval( $_GET['id'] );
+    // Nonce-Überprüfung für Reset-Aktion
+    check_admin_referer( 'urlshorter_reset_' . $id );
+
+    $table_name = $wpdb->prefix . 'short_urls';
+    $updated = $wpdb->update(
+        $table_name,
+        array('click_count' => 0),
+        array('id' => $id),
+        array('%d'),
+        array('%d')
+    );
+    if ( false !== $updated ) {
+        add_action( 'admin_notices', function() {
+            echo '<div class="updated"><p>Klicks erfolgreich zurückgesetzt!</p></div>';
+        });
+    }
+    // Weiterleitung zur Übersicht
+    wp_redirect( admin_url( 'admin.php?page=url-shorter' ) );
+    exit;
+}
 

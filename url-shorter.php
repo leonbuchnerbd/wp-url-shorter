@@ -24,6 +24,16 @@ require_once URL_SHORTER_PATH . 'includes/shorturl-functions.php';
 require_once URL_SHORTER_PATH . 'includes/helper-functions.php';
 require_once URL_SHORTER_PATH . 'admin/admin-functions.php';
 
+function urlshorter_admin_styles( $hook ) {
+    // Lade die Styles nur auf der Plugin-Seite
+    // Hier wird geprüft, ob die aktuelle Seite unser Plugin ist, z. B. wenn page=url-shorter
+    if ( isset( $_GET['page'] ) && $_GET['page'] === 'url-shorter' ) {
+        wp_enqueue_style( 'urlshorter-admin-style', URL_SHORTER_URL . 'assets/css/admin.css', array(), '1.0.0' );
+    }
+}
+add_action( 'admin_enqueue_scripts', 'urlshorter_admin_styles' );
+
+
 // Aktivierungshook: erstellt die Datenbanktabelle
 register_activation_hook( __FILE__, 'urlshorter_activate' );
 
