@@ -34,11 +34,36 @@ if (!file_exists($pluginFile)) {
 }
 
 $pluginContent = file_get_contents($pluginFile);
+
+// Debug: Aktuelle Version im Plugin-Header finden
+if (preg_match('/\*\s*Version:\s*([0-9.]+)/', $pluginContent, $currentVersionMatch)) {
+    echo "🔍 Aktuelle Version im Plugin-Header: " . $currentVersionMatch[1] . "\n";
+} else {
+    echo "⚠️  Warnung: Keine Version im Plugin-Header gefunden!\n";
+    echo "🔍 Suche nach beschädigten Versionszeilen...\n";
+    
+    // Suche nach beschädigten Patterns
+    if (preg_match('/\*\s*Version:\s*/', $pluginContent)) {
+        echo "✅ Version-Label gefunden\n";
+    }
+    if (preg_match('/\s+\.[0-9]+/', $pluginContent)) {
+        echo "⚠️  Beschädigte Version gefunden (beginnt mit Punkt)\n";
+    }
+}
+
+// Robusteres Pattern: Ersetze alles nach "Version:" bis zur nächsten Zeile
 $updatedContent = preg_replace(
-    '/(\* Version:\s*)([0-9.]+)/',
-    '$1' . $version,
+    '/(\*\s*Version:\s*)[0-9.]*([^\r\n]*)/',
+    '${1}' . $version,
     $pluginContent
 );
+
+// Debug: Prüfen ob Ersetzung stattgefunden hat
+if (preg_match('/\*\s*Version:\s*([0-9.]+)/', $updatedContent, $newVersionMatch)) {
+    echo "🔍 Neue Version im Plugin-Header: " . $newVersionMatch[1] . "\n";
+} else {
+    echo "❌ Ersetzung fehlgeschlagen!\n";
+}
 
 if ($updatedContent === $pluginContent) {
     echo "✅ Plugin-Header bereits aktuell (Version $version)\n";
@@ -49,9 +74,9 @@ if ($updatedContent === $pluginContent) {
 
 // Nächste Schritte anzeigen
 echo "\n🚀 Nächste Schritte für Release:\n";
-echo "1. git add .\n";
-echo "2. git commit -m \"Version $version\"\n";
-echo "3. git push\n";
-echo "4. git tag v$version\n";
-echo "5. git push origin v$version\n";
+echo "git add .\n";
+echo "git commit -m \"Version $version\"\n";
+echo "git push\n";
+echo "git tag v$version\n";
+echo "git push origin v$version\n";
 echo "\n💡 GitHub Actions erstellt automatisch das Release!\n";

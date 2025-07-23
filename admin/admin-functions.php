@@ -14,6 +14,16 @@ function urlshorter_admin_menu() {
         'url-shorter',
         'urlshorter_admin_page'
     );
+    
+    // Einstellungen-Unterseite hinzufügen
+    add_submenu_page(
+        'url-shorter',
+        'URL-Shorter Einstellungen',
+        'Einstellungen',
+        'manage_options',
+        'url-shorter-settings',
+        'urlshorter_settings_page'
+    );
 }
 
 // Anzeige der Admin-Seite
@@ -661,6 +671,87 @@ function urlshorter_edit_url() {
             <?php submit_button( 'Eintrag aktualisieren', 'primary', 'update_url' ); ?>
         </form>
         <p><a href="<?php echo admin_url( 'admin.php?page=url-shorter' ); ?>">&laquo; Zurück zur Übersicht</a></p>
+    </div>
+    <?php
+}
+
+// Einstellungsseite für URL-Shorter
+function urlshorter_settings_page() {
+    // Einstellungen speichern
+    if (isset($_POST['submit'])) {
+        if (wp_verify_nonce($_POST['_wpnonce'], 'url_shorter_settings')) {
+            $auto_update = isset($_POST['url_shorter_auto_update']) ? 1 : 0;
+            update_option('url_shorter_auto_update', $auto_update);
+            echo '<div class="updated"><p>Einstellungen gespeichert.</p></div>';
+        }
+    }
+    
+    $auto_update_enabled = get_option('url_shorter_auto_update', false);
+    ?>
+    <div class="wrap">
+        <h1>URL-Shorter Einstellungen</h1>
+        
+        <form method="post" action="">
+            <?php wp_nonce_field('url_shorter_settings'); ?>
+            
+            <h2>Update-Einstellungen</h2>
+            <table class="form-table">
+                <tr>
+                    <th scope="row">Automatische Updates</th>
+                    <td>
+                        <label>
+                            <input type="checkbox" name="url_shorter_auto_update" value="1" <?php checked($auto_update_enabled, 1); ?>>
+                            Automatische Updates von GitHub aktivieren
+                        </label>
+                        <p class="description">
+                            Wenn aktiviert, wird das Plugin automatisch auf die neueste Version von GitHub aktualisiert, 
+                            sobald eine neue Version verfügbar ist.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+            
+            <?php submit_button('Einstellungen speichern'); ?>
+        </form>
+        
+        <hr>
+        
+        <h2>Update-Informationen</h2>
+        <?php
+        // Aktuelle Version anzeigen
+        echo '<p><strong>Aktuelle Plugin-Version:</strong> ' . URL_SHORTER_VERSION . '</p>';
+        
+        // Prüfe auf verfügbare Updates
+        if (class_exists('URLShorterFreeUpdater')) {
+            $updater_temp = new URLShorterFreeUpdater(URL_SHORTER_PATH . 'url-shorter.php', 'leonbuchnerbd/wp-url-shorter', URL_SHORTER_VERSION);
+            
+            // Verwende Reflection um auf private Methode zuzugreifen
+            $reflection = new ReflectionClass($updater_temp);
+            $method = $reflection->getMethod('get_remote_version');
+            $method->setAccessible(true);
+            $remote_version = $method->invoke($updater_temp);
+            
+            if ($remote_version) {
+                echo '<p><strong>Neueste verfügbare Version:</strong> ' . esc_html($remote_version['new_version']) . '</p>';
+                
+                if (version_compare(URL_SHORTER_VERSION, $remote_version['new_version'], '<')) {
+                    echo '<div class="notice notice-info"><p>';
+                    echo '<strong>Update verfügbar!</strong> Version ' . esc_html($remote_version['new_version']) . ' ist verfügbar. ';
+                    if ($auto_update_enabled) {
+                        echo 'Das Plugin wird automatisch aktualisiert.';
+                    } else {
+                        $update_url = wp_nonce_url(admin_url('admin-ajax.php?action=url_shorter_update'), 'url_shorter_update');
+                        echo '<a href="' . esc_url($update_url) . '" class="button button-primary">Jetzt aktualisieren</a>';
+                    }
+                    echo '</p></div>';
+                } else {
+                    echo '<div class="notice notice-success"><p><strong>Ihr Plugin ist auf dem neuesten Stand!</strong></p></div>';
+                }
+            } else {
+                echo '<p><em>Update-Informationen konnten nicht abgerufen werden.</em></p>';
+            }
+        }
+        ?>
     </div>
     <?php
 }

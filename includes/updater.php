@@ -30,11 +30,21 @@ class URLShorterFreeUpdater {
         add_filter('pre_set_site_transient_update_plugins', array($this, 'check_for_update'));
         add_filter('plugins_api', array($this, 'plugin_info'), 20, 3);
         
+        // Custom Update-Handler für automatische Updates
+        add_filter('upgrader_pre_download', array($this, 'download_package'), 10, 4);
+        add_filter('upgrader_source_selection', array($this, 'source_selection'), 10, 4);
+        
+        // Automatische Updates ermöglichen
+        add_filter('auto_update_plugin', array($this, 'enable_auto_update'), 10, 2);
+        
         // Admin-Notices für Update-Informationen
         add_action('admin_notices', array($this, 'update_notice'));
         
         // Custom Update-Handling
         add_action('wp_ajax_url_shorter_update', array($this, 'handle_update'));
+        
+        // Einstellungen registrieren
+        add_action('admin_init', array($this, 'register_settings'));
     }
 
     public function check_for_update($transient) {
@@ -42,11 +52,14 @@ class URLShorterFreeUpdater {
             return $transient;
         }
 
-        // Cache für 12 Stunden
-        $cache_key = 'url_shorter_version_check';
+        // Cache für 12 Stunden - aber bei Versionswechseln cache leeren
+        $cache_key = 'url_shorter_version_check_' . $this->version;
         $remote_version = get_transient($cache_key);
 
         if ($remote_version === false) {
+            // Alte Cache-Einträge löschen
+            delete_transient('url_shorter_version_check');
+            
             $remote_version = $this->get_remote_version();
             if ($remote_version) {
                 set_transient($cache_key, $remote_version, 12 * HOUR_IN_SECONDS);
@@ -92,7 +105,9 @@ class URLShorterFreeUpdater {
         return array(
             'new_version' => ltrim($data['tag_name'], 'v'),
             'details_url' => $data['html_url'],
-            'download_url' => $data['zipball_url'],
+            'download_url' => isset($data['assets'][0]['browser_download_url']) 
+                ? $data['assets'][0]['browser_download_url'] 
+                : $data['zipball_url'],
             'changelog' => isset($data['body']) ? $data['body'] : 'Siehe GitHub für Details.'
         );
     }
@@ -147,12 +162,23 @@ class URLShorterFreeUpdater {
         }
 
         if ($remote_version && version_compare($this->version, $remote_version['new_version'], '<')) {
+            $update_url = wp_nonce_url(
+                admin_url('admin-ajax.php?action=url_shorter_update'),
+                'url_shorter_update'
+            );
             ?>
             <div class="notice notice-info is-dismissible">
                 <p>
                     <strong>URL-Shorter Update verfügbar:</strong> 
                     Version <?php echo esc_html($remote_version['new_version']); ?> ist verfügbar. 
+                    <em>(Aktuell installiert: <?php echo esc_html($this->version); ?>)</em>
+                    <br>
                     <a href="<?php echo esc_url($remote_version['details_url']); ?>" target="_blank">Details anzeigen</a>
+                    |
+                    <a href="<?php echo esc_url($update_url); ?>" class="button button-primary" 
+                       onclick="return confirm('Möchten Sie das Plugin jetzt aktualisieren?');">
+                        Jetzt aktualisieren
+                    </a>
                 </p>
             </div>
             <?php
@@ -171,9 +197,109 @@ class URLShorterFreeUpdater {
             wp_die('Update-Informationen konnten nicht abgerufen werden.');
         }
 
-        // Download und Installation hier implementieren
-        // Für einfacheren Ansatz: Weiterleitung zur manuellen Installation
-        wp_redirect(admin_url('plugin-install.php?tab=upload'));
-        exit;
+        // Automatisches Update durchführen
+        $this->perform_update($remote_version);
+    }
+
+    /**
+     * Custom Download-Handler für GitHub ZIP-Downloads
+     */
+    public function download_package($reply, $package, $upgrader, $hook_extra = null) {
+        // Nur für unser Plugin aktiv werden
+        if (isset($hook_extra['plugin']) && $hook_extra['plugin'] === $this->plugin_basename) {
+            return $this->download_github_package($package);
+        }
+        return $reply;
+    }
+
+    /**
+     * Source-Selection für GitHub ZIP-Struktur
+     */
+    public function source_selection($source, $remote_source, $upgrader, $hook_extra = null) {
+        // Nur für unser Plugin aktiv werden
+        if (isset($hook_extra['plugin']) && $hook_extra['plugin'] === $this->plugin_basename) {
+            return $this->fix_github_source($source, $remote_source);
+        }
+        return $source;
+    }
+
+    /**
+     * GitHub Package herunterladen
+     */
+    private function download_github_package($package_url) {
+        // Temporäres Verzeichnis erstellen
+        $temp_file = download_url($package_url);
+        
+        if (is_wp_error($temp_file)) {
+            return $temp_file;
+        }
+
+        return $temp_file;
+    }
+
+    /**
+     * GitHub ZIP-Struktur korrigieren
+     */
+    private function fix_github_source($source, $remote_source) {
+        global $wp_filesystem;
+
+        // GitHub ZIP-Archive haben einen zusätzlichen Ordner mit Repository-Name und Commit-Hash
+        $source_dirs = array_keys($wp_filesystem->dirlist($remote_source));
+        
+        if (count($source_dirs) === 1) {
+            $source_dir = trailingslashit($remote_source) . $source_dirs[0];
+            
+            // Prüfen ob das der GitHub-Ordner ist
+            if ($wp_filesystem->is_dir($source_dir)) {
+                return $source_dir;
+            }
+        }
+
+        return $source;
+    }
+
+    /**
+     * Update durchführen
+     */
+    private function perform_update($remote_version) {
+        require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+        require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+
+        // Plugin Upgrader initialisieren
+        $upgrader = new Plugin_Upgrader(new Automatic_Upgrader_Skin());
+        
+        // Update durchführen
+        $result = $upgrader->upgrade($this->plugin_basename);
+
+        if (is_wp_error($result)) {
+            wp_die('Update fehlgeschlagen: ' . $result->get_error_message());
+        } elseif ($result === false) {
+            wp_die('Update fehlgeschlagen: Unbekannter Fehler.');
+        } else {
+            // Cache leeren
+            delete_transient('url_shorter_version_check');
+            
+            wp_redirect(admin_url('plugins.php?updated=true'));
+            exit;
+        }
+    }
+
+    /**
+     * Automatische Updates für dieses Plugin ermöglichen
+     */
+    public function enable_auto_update($update, $item) {
+        if (isset($item->plugin) && $item->plugin === $this->plugin_basename) {
+            // Prüfen ob automatische Updates aktiviert sind
+            $auto_update_enabled = get_option('url_shorter_auto_update', false);
+            return $auto_update_enabled;
+        }
+        return $update;
+    }
+
+    /**
+     * Update-Einstellungen registrieren
+     */
+    public function register_settings() {
+        register_setting('url_shorter_settings', 'url_shorter_auto_update');
     }
 }
