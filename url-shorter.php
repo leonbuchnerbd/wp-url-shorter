@@ -3,7 +3,7 @@
  * Plugin Name: URL-Shorter
  * Plugin URI: https://www.buchner-leon.de/
  * Description: Ein Plugin zur Verkürzung von URLs mit Klicktracking und QR-Code Generierung.
- .3
+ .5
  * Author: Leon Buchner
  * Author URI: https://www.buchner-leon.de/
  * Text Domain: url-shorter

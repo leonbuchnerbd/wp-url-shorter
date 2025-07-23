@@ -10,7 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin Version - nur hier ändern!
-define( 'URL_SHORTER_VERSION', '3.3' );
+define( 'URL_SHORTER_VERSION', '3.5' );
 
 /**
  * Hilfsfunktion um die aktuelle Plugin-Version zu erhalten
