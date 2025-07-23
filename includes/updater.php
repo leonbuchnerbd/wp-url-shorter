@@ -40,11 +40,91 @@ class URLShorterFreeUpdater {
         // Admin-Notices für Update-Informationen
         add_action('admin_notices', array($this, 'update_notice'));
         
+        // Update-Check bei Admin-Seitenaufruf triggern
+        add_action('admin_init', array($this, 'force_update_check'));
+        
         // Custom Update-Handling
         add_action('wp_ajax_url_shorter_update', array($this, 'handle_update'));
         
         // Einstellungen registrieren
         add_action('admin_init', array($this, 'register_settings'));
+        
+        // Debug-Action hinzufügen
+        add_action('wp_ajax_url_shorter_debug', array($this, 'debug_update_check'));
+    }
+
+    /**
+     * Debug-Funktion für Update-Prüfung
+     */
+    public function debug_update_check() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Keine Berechtigung.');
+        }
+
+        echo '<div style="background: white; padding: 20px; margin: 20px; border: 1px solid #ccc;">';
+        echo '<h2>URL-Shorter Update Debug</h2>';
+        
+        echo '<h3>Plugin-Informationen:</h3>';
+        echo '<p><strong>Plugin-Datei:</strong> ' . esc_html($this->plugin_file) . '</p>';
+        echo '<p><strong>Plugin-Basename:</strong> ' . esc_html($this->plugin_basename) . '</p>';
+        echo '<p><strong>Plugin-Slug:</strong> ' . esc_html($this->plugin_slug) . '</p>';
+        echo '<p><strong>Aktuelle Version:</strong> ' . esc_html($this->version) . '</p>';
+        echo '<p><strong>GitHub Repository:</strong> ' . esc_html($this->github_repo) . '</p>';
+        
+        echo '<h3>GitHub API Test:</h3>';
+        $remote_version = $this->get_remote_version();
+        
+        if ($remote_version) {
+            echo '<p style="color: green;"><strong>✅ GitHub API erfolgreich:</strong></p>';
+            echo '<p><strong>Neueste Version:</strong> ' . esc_html($remote_version['new_version']) . '</p>';
+            echo '<p><strong>Download URL:</strong> ' . esc_html($remote_version['download_url']) . '</p>';
+            echo '<p><strong>Details URL:</strong> ' . esc_html($remote_version['details_url']) . '</p>';
+            
+            $version_compare = version_compare($this->version, $remote_version['new_version'], '<');
+            echo '<p><strong>Update verfügbar:</strong> ' . ($version_compare ? 'JA' : 'NEIN') . '</p>';
+        } else {
+            echo '<p style="color: red;"><strong>❌ GitHub API Fehler</strong></p>';
+            echo '<p>Mögliche Ursachen:</p>';
+            echo '<ul>';
+            echo '<li>Keine Internetverbindung</li>';
+            echo '<li>GitHub API nicht erreichbar</li>';
+            echo '<li>Repository nicht gefunden</li>';
+            echo '<li>Keine Releases im Repository</li>';
+            echo '</ul>';
+        }
+        
+        echo '<h3>WordPress Update-System:</h3>';
+        $update_plugins = get_site_transient('update_plugins');
+        if (isset($update_plugins->response[$this->plugin_basename])) {
+            echo '<p style="color: green;"><strong>✅ Plugin ist im WordPress Update-System registriert</strong></p>';
+            $plugin_update = $update_plugins->response[$this->plugin_basename];
+            echo '<p><strong>Update-Version:</strong> ' . esc_html($plugin_update->new_version) . '</p>';
+        } else {
+            echo '<p style="color: orange;"><strong>⚠️ Plugin nicht im WordPress Update-System gefunden</strong></p>';
+        }
+        
+        echo '<h3>Auto-Update Einstellungen:</h3>';
+        $auto_update_enabled = get_option('url_shorter_auto_update', false);
+        echo '<p><strong>Auto-Update aktiviert:</strong> ' . ($auto_update_enabled ? 'JA' : 'NEIN') . '</p>';
+        
+        echo '</div>';
+        wp_die();
+    }
+
+    /**
+     * Update-Check bei Admin-Aufrufen erzwingen
+     */
+    public function force_update_check() {
+        // Nur bei Plugin-Seiten und nur einmal pro Sitzung
+        $current_screen = get_current_screen();
+        if ($current_screen && $current_screen->id === 'plugins' && !get_transient('url_shorter_force_checked')) {
+            // Update-Check erzwingen durch Löschen der Transients
+            delete_site_transient('update_plugins');
+            delete_transient('url_shorter_version_check');
+            
+            // Flag setzen, damit es nicht zu oft passiert
+            set_transient('url_shorter_force_checked', true, 300); // 5 Minuten
+        }
     }
 
     public function check_for_update($transient) {
@@ -66,20 +146,36 @@ class URLShorterFreeUpdater {
             }
         }
 
-        if ($remote_version && version_compare($this->version, $remote_version['new_version'], '<')) {
-            $transient->response[$this->plugin_basename] = (object) array(
-                'slug' => $this->plugin_slug,
-                'plugin' => $this->plugin_basename,
-                'new_version' => $remote_version['new_version'],
-                'url' => $remote_version['details_url'],
-                'package' => $remote_version['download_url']
-            );
+        // WICHTIG: Auch wenn keine neuere Version verfügbar ist, Plugin als "checked" markieren
+        if ($remote_version) {
+            if (version_compare($this->version, $remote_version['new_version'], '<')) {
+                // Update verfügbar - in response hinzufügen
+                $transient->response[$this->plugin_basename] = (object) array(
+                    'slug' => $this->plugin_slug,
+                    'plugin' => $this->plugin_basename,
+                    'new_version' => $remote_version['new_version'],
+                    'url' => $remote_version['details_url'],
+                    'package' => $remote_version['download_url']
+                );
+            } else {
+                // Kein Update verfügbar - aber Plugin als "checked" markieren
+                if (!isset($transient->no_update)) {
+                    $transient->no_update = array();
+                }
+                $transient->no_update[$this->plugin_basename] = (object) array(
+                    'slug' => $this->plugin_slug,
+                    'plugin' => $this->plugin_basename,
+                    'new_version' => $this->version,
+                    'url' => $remote_version['details_url'],
+                    'package' => ''
+                );
+            }
         }
 
         return $transient;
     }
 
-    private function get_remote_version() {
+    public function get_remote_version() {
         // GitHub API für öffentliche Repositories
         $api_url = "https://api.github.com/repos/{$this->github_repo}/releases/latest";
         

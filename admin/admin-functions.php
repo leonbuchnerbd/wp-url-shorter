@@ -749,8 +749,28 @@ function urlshorter_settings_page() {
                 }
             } else {
                 echo '<p><em>Update-Informationen konnten nicht abgerufen werden.</em></p>';
+                
+                // Debug-Link hinzufügen
+                $debug_url = wp_nonce_url(admin_url('admin-ajax.php?action=url_shorter_debug'), 'url_shorter_debug');
+                echo '<p><a href="' . esc_url($debug_url) . '" class="button" target="_blank">🔍 Update-System debuggen</a></p>';
             }
         }
+        
+        // Cache-Reset Option
+        echo '<hr>';
+        echo '<h3>Entwickler-Optionen</h3>';
+        if (isset($_POST['clear_update_cache'])) {
+            delete_transient('url_shorter_version_check');
+            delete_transient('url_shorter_version_check_' . URL_SHORTER_VERSION);
+            echo '<div class="updated"><p>Update-Cache geleert!</p></div>';
+        }
+        echo '<form method="post" style="display: inline;">';
+        wp_nonce_field('clear_cache');
+        echo '<input type="submit" name="clear_update_cache" value="Update-Cache leeren" class="button">';
+        echo '</form>';
+        
+        $debug_url = wp_nonce_url(admin_url('admin-ajax.php?action=url_shorter_debug'), 'url_shorter_debug');
+        echo ' <a href="' . esc_url($debug_url) . '" class="button" target="_blank">🔍 Update-System debuggen</a>';
         ?>
     </div>
     <?php
