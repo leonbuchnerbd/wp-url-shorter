@@ -8,6 +8,7 @@
  * Author URI: https://www.buchner-leon.de/
  * Text Domain: url-shorter
  * Domain Path: /languages
+ * Update URI: https://github.com/leonbuchnerbd/wp-url-shorter
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -22,7 +23,13 @@ define( 'URL_SHORTER_URL', plugin_dir_url( __FILE__ ) );
 require_once URL_SHORTER_PATH . 'includes/database-functions.php';
 require_once URL_SHORTER_PATH . 'includes/shorturl-functions.php';
 require_once URL_SHORTER_PATH . 'includes/helper-functions.php';
+require_once URL_SHORTER_PATH . 'includes/updater.php';
 require_once URL_SHORTER_PATH . 'admin/admin-functions.php';
+
+// Vollständige WordPress Update-Integration initialisieren
+if (is_admin()) {
+    new URLShorterFreeUpdater(__FILE__, 'leonbuchnerbd/wp-url-shorter', '3.0');
+}
 
 // Aktivierungshook: erstellt die Datenbanktabelle
 register_activation_hook( __FILE__, 'urlshorter_activate' );

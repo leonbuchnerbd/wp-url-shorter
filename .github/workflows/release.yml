@@ -1,0 +1,44 @@
+name: WordPress Plugin Auto-Update
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Create Plugin ZIP
+      run: |
+        zip -r url-shorter-${{ github.ref_name }}.zip . -x "*.git*" "*.github*" "node_modules/*" "*.md"
+    
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: URL-Shorter ${{ github.ref }}
+        body: |
+          Automatisches Release von URL-Shorter Plugin
+          
+          ## Änderungen in dieser Version:
+          - Siehe Commit-History für Details
+          
+        draft: false
+        prerelease: false
+    
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./url-shorter-${{ github.ref_name }}.zip
+        asset_name: url-shorter-${{ github.ref_name }}.zip
+        asset_content_type: application/zip
