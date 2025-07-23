@@ -3,7 +3,7 @@
  * Plugin Name: URL-Shorter
  * Plugin URI: https://www.buchner-leon.de/
  * Description: Ein Plugin zur Verkürzung von URLs mit Klicktracking und QR-Code Generierung.
- * Version: 3.6
+ * Version: 3.7
  * Author: Leon Buchner
  * Author URI: https://www.buchner-leon.de/
  * Text Domain: url-shorter
@@ -32,6 +32,11 @@ require_once URL_SHORTER_PATH . 'admin/admin-functions.php';
 // Vollständige WordPress Update-Integration initialisieren
 if (is_admin()) {
     new URLShorterFreeUpdater(__FILE__, 'leonbuchnerbd/wp-url-shorter', URL_SHORTER_VERSION);
+    
+    // Automatische Updates standardmäßig aktivieren (falls noch nicht gesetzt)
+    if (get_option('url_shorter_auto_update') === false) {
+        update_option('url_shorter_auto_update', 1);
+    }
     
     // Cache beim Plugin-Update leeren
     add_action('upgrader_process_complete', function($upgrader, $hook_extra) {
